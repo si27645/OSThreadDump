@@ -1,0 +1,35 @@
+name: build
+
+on:
+  push:
+    branches: [ master, main ]
+    tags: [ 'v*' ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build 64-bit (AnyCPU)
+        run: dotnet build OSThreadDump.sln -c Release
+
+      - name: Build 32-bit (x86)
+        run: dotnet build OSThreadDump/OSThreadDump.csproj -c Release -p:PlatformTarget=x86 -o OSThreadDump/bin/Release/net48
+
+      - name: Smoke test
+        shell: pwsh
+        run: |
+          OSThreadDump/bin/Release/net48/OSThreadDump.exe -?
+          OSThreadDump/bin/Release/net48/OSThreadDump.exe -Process pwsh -Out smoke
+          OSThreadDump/bin/Release/net48/OSThreadDump.x86.exe -Process pwsh -Out smoke
+          Get-Content smoke/*.log | Select-Object -First 40
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OSThreadDump
+          path: |
+            OSThreadDump/bin/Release/net48/*.exe
+            OSThreadDump/bin/Release/net48/*.exe.config
+            OSThreadDump/bin/Release/net48/*.dll
