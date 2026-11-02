@@ -1,157 +1,84 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO;
-using Microsoft.Diagnostics.Runtime;
 using System.Diagnostics;
+using System.Globalization;
+using System.IO;
+using System.Text;
 using System.Threading;
 
 namespace OSThreadDump
 {
-    class Program
+    internal static class Program
     {
-        static Dictionary<string, List<string>> process_sets = new Dictionary<string, List<string>>()
+        private static readonly ManualResetEvent StopRequested = new ManualResetEvent(false);
+
+        private static int Main(string[] args)
         {
-            { "all",  new List<string> { "LogServer.exe", "DeployService.exe", "CompilerService.exe", "Scheduler.exe", "SMSConnector.exe", "w3wp.exe" } },
-            { "iis",  new List<string> { "w3wp.exe" } },
-            // currently disabled because of arch differences (32bit vs 64)
-            // { "devtools",  new List<string> { "ServiceStudio.exe", "IntegrationStudio.exe" } },
-            { "services",  new List<string> { "LogServer.exe", "DeployService.exe", "CompilerService.exe", "Scheduler.exe", "SMSConnector.exe" } }
-        };
-        static void Main(string[] args)
-        {
-            string process_set_id = "all";
-            AttachFlag mode = AttachFlag.Passive;
-            int interval = 0;
-
-            // command line parsing
-            int i = 0;
-            while (i < args.Length)
-            {
-                switch(args[i])
-                {
-                    case "-Passive":
-                        mode = AttachFlag.Passive;
-                        i++;
-                        continue;
-                    case "-NonInvasive":
-                        mode = AttachFlag.NonInvasive;
-                        i++;
-                        continue;
-                    case "-Invasive":
-                        mode = AttachFlag.Invasive;
-                        i++;
-                        continue;
-                    case "-Interval":
-                        i++;
-                        if (args.Length < i)
-                        {
-                            Console.WriteLine("Interval takes at least one argument");
-                            return;
-                        }
-                        interval = Int32.Parse(args[i]);
-                        i++;
-                        continue;
-                }
-                process_set_id = args[i];
-                i++;
-            }
-
-            if (!process_sets.ContainsKey(process_set_id))
-            {
-                Console.WriteLine("Must specify valid process set: all iis services");
-                return;
-            }
-
-            List<string> process_set = process_sets[process_set_id];
-            do
-            {
-                Stopwatch sw = new Stopwatch();
-                sw.Start();
-                using (TextWriter writer = new StreamWriter(File.Create("threads_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".log")))
-                {
-                    writer.WriteLine(DateTime.Now.ToString());
-
-                    foreach (var p in Process.GetProcesses())
-                    {
-                        string filename = GetProcessFilename(p);
-                        if (process_set.Any(f => filename.EndsWith(f)))
-                        {
-                            writer.WriteLine(p.Id + " " + p.ProcessName + " " + filename);
-                            writer.WriteLine(GetThreadDump(p.Id, mode));
-                        }
-                    }
-                }
-                sw.Stop();
-                // wait at least twice as long as it took to process
-                // try to keep up with the defined interval
-                Thread.Sleep(Math.Max(interval * 1000 - (int)sw.ElapsedMilliseconds, 2*(int)sw.ElapsedMilliseconds));
-            } while (interval > 0);
-        }
-
-
-
-        public static string GetThreadDump(int pid, AttachFlag mode)
-        {
-            using (StringWriter writer = new StringWriter())
-            {
-                try {
-                    using (var dataTarget = DataTarget.AttachToProcess(pid, 5000, mode))
-                    {
-                        writer.WriteLine(dataTarget.ClrVersions.First().Version);
-                        var runtime = dataTarget.ClrVersions.First().CreateRuntime();
-
-                        foreach (var domain in runtime.AppDomains)
-                        {
-                            writer.WriteLine("Domain " + domain.Name);
-                        }
-                        writer.WriteLine();
-                        foreach (var t in runtime.Threads)
-                        {
-                            if (!t.IsAlive)
-                                continue;
-
-                            if (t.StackTrace.Count == 0)
-                                continue;
-
-                            writer.WriteLine("Thread " + t.ManagedThreadId + ": ");
-                            int loop_count = 0;
-                            foreach (var frame in t.EnumerateStackTrace())
-                            {
-                                writer.WriteLine("\t" + frame.StackPointer.ToString("x16") + " " + frame.ToString());
-                                loop_count++;
-                                if (loop_count > 200)
-                                {
-                                    writer.WriteLine("\t[CORRUPTED]");
-                                    break;
-                                }
-                            }
-                            writer.WriteLine();
-                        }
-                    }
-                    return writer.ToString();
-                } catch
-                {
-                    // This is mostly to catch the "invalid architecture" error.
-                    // Any error that happens we want to ignore and return what we have.
-                    return writer.ToString();
-                }
-            }
-        }
-
-
-        public static string GetProcessFilename(Process p)
-        {
+            Options options;
             try
             {
-                return p.Modules[0].FileName;
+                options = Options.Parse(args);
             }
-            catch
+            catch (OptionsException ex)
             {
-                return "";
+                Console.Error.WriteLine(ex.Message);
+                Console.Error.WriteLine("Run OSThreadDump -? for help.");
+                return 1;
             }
+
+            if (options.ShowHelp)
+            {
+                Console.WriteLine(Options.Usage);
+                return 0;
+            }
+
+            try
+            {
+                Directory.CreateDirectory(options.OutputDirectory);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("Cannot use output directory '{0}': {1}", options.OutputDirectory, ex.Message);
+                return 1;
+            }
+
+            // Ctrl+C finishes the dump in progress, then stops.
+            Console.CancelKeyPress += (sender, e) =>
+            {
+                e.Cancel = true;
+                StopRequested.Set();
+            };
+
+            var dumper = new ThreadDumper(options);
+            int dumps = 0;
+
+            while (true)
+            {
+                Stopwatch stopwatch = Stopwatch.StartNew();
+                string path = Path.Combine(
+                    options.OutputDirectory,
+                    "threads_" + DateTime.Now.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture) + ".log");
+
+                int found;
+                using (var writer = new StreamWriter(path, false, new UTF8Encoding(false)))
+                {
+                    found = dumper.WriteDump(writer);
+                }
+                stopwatch.Stop();
+                dumps++;
+
+                Console.WriteLine("{0} process(es) written to {1} in {2} ms", found, Path.GetFullPath(path), stopwatch.ElapsedMilliseconds);
+
+                if (options.IntervalSeconds == 0 || (options.Count > 0 && dumps >= options.Count))
+                    break;
+
+                // Keep to the requested interval, but always pause at least twice as long as the
+                // dump took, so a slow dump cannot keep the target processes under constant inspection.
+                long waitMs = Math.Max(options.IntervalSeconds * 1000L - stopwatch.ElapsedMilliseconds, 2 * stopwatch.ElapsedMilliseconds);
+                if (StopRequested.WaitOne(TimeSpan.FromMilliseconds(waitMs)))
+                    break;
+            }
+
+            return 0;
         }
     }
 }
