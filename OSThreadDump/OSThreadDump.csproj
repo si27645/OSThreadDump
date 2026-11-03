@@ -1,12 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Self-contained single exe (no .NET needed on the server):
+    Single exe that uses the .NET 8 runtime installed on the server
+    (OutSystems Platform Server 11.27+ installs it with the .NET 8 Hosting Bundle):
       dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -r win-x64 -o dist
       dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -r win-x86 -o dist
-
-    Small single exe that uses the installed .NET 8 runtime (OutSystems 11.27+ has it):
-      dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -r win-x64 -o dist-small -p:SelfContained=false
   -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -27,16 +25,10 @@
     <Copyright>Copyright © 2017-2026</Copyright>
   </PropertyGroup>
 
-  <!-- Publishing for a runtime (-r win-x64 / win-x86): one exe, self-contained unless overridden. -->
+  <!-- Publishing for a runtime (-r win-x64 / win-x86): one framework-dependent exe. -->
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
-    <SelfContained Condition="'$(SelfContained)' == ''">true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <DebugType>embedded</DebugType>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(RuntimeIdentifier)' != '' and '$(SelfContained)' == 'true'">
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
   <ItemGroup>

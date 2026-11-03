@@ -65,7 +65,7 @@ the wrong bitness is listed as `[SKIPPED]` along with its CPU summary.
 ## Download
 
 Each GitHub Actions run (**Actions** tab → latest run → **Artifacts**) produces two
-stand-alone executables. Copy one to the server and run it; nothing needs to be installed:
+single-file executables. Copy one to a server that has the .NET 8 runtime and run it:
 
 - `OSThreadDump.exe` for 64-bit processes (IIS `w3wp`, the platform services)
 - `OSThreadDump.x86.exe` for 32-bit processes
@@ -74,21 +74,17 @@ stand-alone executables. Copy one to the server and run it; nothing needs to be 
 
 Requires the .NET 8 SDK (Windows, Linux or WSL). The tool itself only runs on Windows.
 
-**Self-contained single exe (recommended)**, about 30–35 MB, nothing to install on the server:
-
 ```
 dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -r win-x64 -o dist
 dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -r win-x86 -o dist
 ```
 
-Result: `dist/OSThreadDump.exe` and `dist/OSThreadDump.x86.exe`.
+Result: `dist/OSThreadDump.exe` and `dist/OSThreadDump.x86.exe`, each a single small file.
 
-**Small single exe**, under 1 MB. It uses the .NET 8 runtime already on the server
-(OutSystems Platform Server 11.27 and later installs the .NET 8 Hosting Bundle, which includes it):
-
-```
-dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -r win-x64 -o dist-small -p:SelfContained=false
-```
+They need the **.NET 8 runtime** on the server. OutSystems Platform Server 11.27 and later
+installs it (as part of the .NET 8 Hosting Bundle). On other machines, install the
+[.NET 8 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0). For the x86 exe you need
+the x86 runtime.
 
 On WSL/Linux, if `dotnet` aborts with "Couldn't find a valid ICU package", install it with
 `sudo apt install libicu-dev`, or run `export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1` first.

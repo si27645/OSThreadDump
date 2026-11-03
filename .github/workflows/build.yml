@@ -30,7 +30,6 @@ jobs:
           Get-ChildItem dist | Format-Table Name, Length
           dist/OSThreadDump.exe -?
           dist/OSThreadDump.exe -Process pwsh -Out smoke
-          dist/OSThreadDump.x86.exe -Process pwsh -Out smoke
           Get-Content smoke/*.log | Select-Object -First 40
 
       - uses: actions/upload-artifact@v4
