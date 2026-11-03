@@ -5,7 +5,8 @@ OutSystems platform services and IIS worker processes (`w3wp.exe`). Each thread 
 with its **OS thread ID** and **CPU time**, so a hot thread seen in Process Explorer,
 perfmon or Task Manager can be matched to the code it is running.
 
-Built on [ClrMD](https://github.com/microsoft/clrmd). No debugger or dump file needed.
+Built on .NET 8 and [ClrMD](https://github.com/microsoft/clrmd). Reads both .NET Framework and
+.NET (Core) processes. No debugger or dump file needed.
 
 ## Usage
 
@@ -71,26 +72,23 @@ stand-alone executables. Copy one to the server and run it; nothing needs to be 
 
 ## Building
 
-Requires the .NET 8 SDK (Windows, Linux or WSL).
+Requires the .NET 8 SDK (Windows, Linux or WSL). The tool itself only runs on Windows.
 
-**Single self-contained exe (recommended)**, about 30–35 MB, no .NET install needed on the server:
+**Self-contained single exe (recommended)**, about 30–35 MB, nothing to install on the server:
 
 ```
-dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -f net8.0 -r win-x64 -o dist
-dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -f net8.0 -r win-x86 -o dist
+dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -r win-x64 -o dist
+dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -r win-x86 -o dist
 ```
 
 Result: `dist/OSThreadDump.exe` and `dist/OSThreadDump.x86.exe`.
 
-**Small .NET Framework 4.7.2 build**, an exe plus DLLs. Needs .NET Framework 4.7.2 or later,
-which every OutSystems 11 server already has:
+**Small single exe**, under 1 MB. It uses the .NET 8 runtime already on the server
+(OutSystems Platform Server 11.27 and later installs the .NET 8 Hosting Bundle, which includes it):
 
 ```
-dotnet build OSThreadDump/OSThreadDump.csproj -c Release -f net472
-dotnet build OSThreadDump/OSThreadDump.csproj -c Release -f net472 -p:PlatformTarget=x86
+dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -r win-x64 -o dist-small -p:SelfContained=false
 ```
-
-Output: `OSThreadDump/bin/Release/net472/`. Copy the `.exe`, `.exe.config` and every `.dll`.
 
 On WSL/Linux, if `dotnet` aborts with "Couldn't find a valid ICU package", install it with
 `sudo apt install libicu-dev`, or run `export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1` first.

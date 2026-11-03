@@ -16,13 +16,13 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Build (net472 + net8.0)
+      - name: Build
         run: dotnet build OSThreadDump.sln -c Release
 
       - name: Publish single-file exes
         run: |
-          dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -f net8.0 -r win-x64 -o dist
-          dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -f net8.0 -r win-x86 -o dist
+          dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -r win-x64 -o dist
+          dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -r win-x86 -o dist
 
       - name: Smoke test
         shell: pwsh
