@@ -1,14 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    Two flavours from one project:
+      net48   - small exe + DLLs, needs .NET Framework 4.8 on the machine (dotnet build).
+      net8.0  - single self-contained OSThreadDump.exe, nothing to install (dotnet publish):
+                  dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -f net8.0 -r win-x64 -o dist
+                  dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -f net8.0 -r win-x86 -o dist
+  -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net48</TargetFramework>
+    <TargetFrameworks>net48;net8.0</TargetFrameworks>
     <LangVersion>7.3</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
     <RootNamespace>OSThreadDump</RootNamespace>
     <AssemblyName>OSThreadDump</AssemblyName>
-    <!-- Build the 32-bit variant with: dotnet build -c Release -p:PlatformTarget=x86 -->
+    <!-- 32-bit net48 build: dotnet build -c Release -p:PlatformTarget=x86 -->
     <PlatformTarget Condition="'$(PlatformTarget)' == ''">AnyCPU</PlatformTarget>
-    <AssemblyName Condition="'$(PlatformTarget)' == 'x86'">OSThreadDump.x86</AssemblyName>
+    <AssemblyName Condition="'$(PlatformTarget)' == 'x86' or '$(RuntimeIdentifier)' == 'win-x86'">OSThreadDump.x86</AssemblyName>
     <Prefer32Bit>false</Prefer32Bit>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
 
@@ -16,6 +25,22 @@
     <Product>OSThreadDump</Product>
     <Description>Dumps managed thread stacks of .NET processes with OS thread IDs and CPU time.</Description>
     <Copyright>Copyright © 2017-2026</Copyright>
+  </PropertyGroup>
+
+  <!-- Single-file, self-contained exe (only when publishing for a runtime, e.g. -r win-x64). -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0' and '$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <DebugType>embedded</DebugType>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <!-- The tool only works on Windows; silence "only supported on Windows" analyzer warnings. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

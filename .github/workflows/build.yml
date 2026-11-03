@@ -2,7 +2,7 @@ name: build
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [ master, main, modernize ]
     tags: [ 'v*' ]
   pull_request:
 
@@ -12,24 +12,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build 64-bit (AnyCPU)
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build (net48 + net8.0)
         run: dotnet build OSThreadDump.sln -c Release
 
-      - name: Build 32-bit (x86)
-        run: dotnet build OSThreadDump/OSThreadDump.csproj -c Release -p:PlatformTarget=x86 -o OSThreadDump/bin/Release/net48
+      - name: Publish single-file exes
+        run: |
+          dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -f net8.0 -r win-x64 -o dist
+          dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -f net8.0 -r win-x86 -o dist
 
       - name: Smoke test
         shell: pwsh
         run: |
-          OSThreadDump/bin/Release/net48/OSThreadDump.exe -?
-          OSThreadDump/bin/Release/net48/OSThreadDump.exe -Process pwsh -Out smoke
-          OSThreadDump/bin/Release/net48/OSThreadDump.x86.exe -Process pwsh -Out smoke
+          Get-ChildItem dist | Format-Table Name, Length
+          dist/OSThreadDump.exe -?
+          dist/OSThreadDump.exe -Process pwsh -Out smoke
+          dist/OSThreadDump.x86.exe -Process pwsh -Out smoke
           Get-Content smoke/*.log | Select-Object -First 40
 
       - uses: actions/upload-artifact@v4
         with:
           name: OSThreadDump
           path: |
-            OSThreadDump/bin/Release/net48/*.exe
-            OSThreadDump/bin/Release/net48/*.exe.config
-            OSThreadDump/bin/Release/net48/*.dll
+            dist/OSThreadDump.exe
+            dist/OSThreadDump.x86.exe

@@ -61,17 +61,35 @@ A 64-bit process can only read the stacks of other 64-bit processes. Use
 `OSThreadDump.x86.exe` for 32-bit targets (for example the `devtools` set). A process with
 the wrong bitness is listed as `[SKIPPED]` along with its CPU summary.
 
+## Download
+
+Each GitHub Actions run (**Actions** tab → latest run → **Artifacts**) produces two
+stand-alone executables. Copy one to the server and run it; nothing needs to be installed:
+
+- `OSThreadDump.exe` for 64-bit processes (IIS `w3wp`, the platform services)
+- `OSThreadDump.x86.exe` for 32-bit processes
+
 ## Building
 
-Requires the .NET SDK (6 or later) on Windows, or Visual Studio 2019+.
+Requires the .NET 8 SDK (Windows, Linux or WSL).
+
+**Single self-contained exe (recommended)**, about 30–35 MB, no .NET install needed on the server:
 
 ```
-dotnet build OSThreadDump.sln -c Release                                   # OSThreadDump.exe (64-bit)
-dotnet build OSThreadDump/OSThreadDump.csproj -c Release -p:PlatformTarget=x86   # OSThreadDump.x86.exe
+dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -f net8.0 -r win-x64 -o dist
+dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -f net8.0 -r win-x86 -o dist
 ```
 
-Output goes to `OSThreadDump/bin/Release/net48/`. Copy the `.exe`, `.exe.config` and all
-`.dll` files. The target machine needs .NET Framework 4.8 (included in Windows Server 2019+
-and Windows 10 1903+).
+Result: `dist/OSThreadDump.exe` and `dist/OSThreadDump.x86.exe`.
 
-GitHub Actions builds both variants on every push; download them from the run's artifacts.
+**Small .NET Framework 4.8 build**, an exe plus DLLs, needs .NET Framework 4.8 on the server:
+
+```
+dotnet build OSThreadDump/OSThreadDump.csproj -c Release -f net48
+dotnet build OSThreadDump/OSThreadDump.csproj -c Release -f net48 -p:PlatformTarget=x86
+```
+
+Output: `OSThreadDump/bin/Release/net48/`. Copy the `.exe`, `.exe.config` and every `.dll`.
+
+On WSL/Linux, if `dotnet` aborts with "Couldn't find a valid ICU package", install it with
+`sudo apt install libicu-dev`, or run `export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1` first.
