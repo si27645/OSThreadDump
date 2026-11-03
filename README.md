@@ -82,14 +82,15 @@ dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -f net8.0 -r win-x86 
 
 Result: `dist/OSThreadDump.exe` and `dist/OSThreadDump.x86.exe`.
 
-**Small .NET Framework 4.8 build**, an exe plus DLLs, needs .NET Framework 4.8 on the server:
+**Small .NET Framework 4.7.2 build**, an exe plus DLLs. Needs .NET Framework 4.7.2 or later,
+which every OutSystems 11 server already has:
 
 ```
-dotnet build OSThreadDump/OSThreadDump.csproj -c Release -f net48
-dotnet build OSThreadDump/OSThreadDump.csproj -c Release -f net48 -p:PlatformTarget=x86
+dotnet build OSThreadDump/OSThreadDump.csproj -c Release -f net472
+dotnet build OSThreadDump/OSThreadDump.csproj -c Release -f net472 -p:PlatformTarget=x86
 ```
 
-Output: `OSThreadDump/bin/Release/net48/`. Copy the `.exe`, `.exe.config` and every `.dll`.
+Output: `OSThreadDump/bin/Release/net472/`. Copy the `.exe`, `.exe.config` and every `.dll`.
 
 On WSL/Linux, if `dotnet` aborts with "Couldn't find a valid ICU package", install it with
 `sudo apt install libicu-dev`, or run `export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1` first.

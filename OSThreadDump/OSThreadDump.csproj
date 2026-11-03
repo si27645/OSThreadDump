@@ -2,20 +2,20 @@
 
   <!--
     Two flavours from one project:
-      net48   - small exe + DLLs, needs .NET Framework 4.8 on the machine (dotnet build).
+      net472  - small exe + DLLs, needs .NET Framework 4.7.2+ (installed by OutSystems 11) (dotnet build).
       net8.0  - single self-contained OSThreadDump.exe, nothing to install (dotnet publish):
                   dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -f net8.0 -r win-x64 -o dist
                   dotnet publish OSThreadDump/OSThreadDump.csproj -c Release -f net8.0 -r win-x86 -o dist
   -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net48;net8.0</TargetFrameworks>
+    <TargetFrameworks>net472;net8.0</TargetFrameworks>
     <LangVersion>7.3</LangVersion>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <RootNamespace>OSThreadDump</RootNamespace>
     <AssemblyName>OSThreadDump</AssemblyName>
-    <!-- 32-bit net48 build: dotnet build -c Release -p:PlatformTarget=x86 -->
+    <!-- 32-bit net472 build: dotnet build -c Release -p:PlatformTarget=x86 -->
     <PlatformTarget Condition="'$(PlatformTarget)' == ''">AnyCPU</PlatformTarget>
     <AssemblyName Condition="'$(PlatformTarget)' == 'x86' or '$(RuntimeIdentifier)' == 'win-x86'">OSThreadDump.x86</AssemblyName>
     <Prefer32Bit>false</Prefer32Bit>
